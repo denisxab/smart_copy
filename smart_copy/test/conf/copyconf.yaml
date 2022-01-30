@@ -11,6 +11,6 @@ cp:
     - pf/__env.env
     - pf/.gitignore
     - pf/node_modules
-    - pf/project_name
+#    - pf/project_name
     - pyproject.toml
     - pf/debloy/log_django

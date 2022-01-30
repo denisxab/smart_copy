@@ -1,6 +1,6 @@
-import os
+from argparse import ArgumentParser
 from collections import deque
-from os import path, listdir, makedirs
+from os import path, listdir, makedirs, rmdir, remove
 from pprint import pformat
 from re import match
 from shutil import copyfile
@@ -23,11 +23,11 @@ class DiffDir(NamedTuple):
     folder_intruder: set[str]
 
     def log(self):
-        logger.warning(f"NotFile:\n{pformat(self.not_exist_arr_file)}")
-        logger.warning(f"NotFolder:\n{pformat(self.not_exist_arr_folder)}")
-        logger.warning(f"DiffHashFile:\n{pformat(self.diff_data_arr_file)}")
-        logger.warning(f"FileIntruder:\n{pformat(self.file_intruder)}")
-        logger.warning(f"FolderIntruder:\n{pformat(self.folder_intruder)}")
+        logger.debug(f"NotFile:\n{pformat(self.not_exist_arr_file)}")
+        logger.debug(f"NotFolder:\n{pformat(self.not_exist_arr_folder)}")
+        logger.debug(f"DiffHashFile:\n{pformat(self.diff_data_arr_file)}")
+        logger.debug(f"FileIntruder:\n{pformat(self.file_intruder)}")
+        logger.debug(f"FolderIntruder:\n{pformat(self.folder_intruder)}")
 
 
 class BaseSmartDir:
@@ -54,7 +54,7 @@ class BaseSmartDir:
         # Получаем пути к файлам и папкам, которые не исключены в конфигурациях
         arr_file, arr_folder = self._excludeFolderAndFile(self.exclude,
                                                           **self._getAllFileAndFolderFromPath(self.infloder))
-        logger.info(f"Tracking:\n{pformat({'arr_file': arr_file, 'arr_folder': arr_folder}, compact=True, width=240)}")
+        logger.trace(f"Tracking:\n{pformat({'arr_file': arr_file, 'arr_folder': arr_folder}, compact=True, width=240)}")
         # Получим разницу между А и Б директориями
         objDiffDir = self._dirDiff(
             self.outfolder,
@@ -220,6 +220,14 @@ class BaseSmartDir:
 
     @staticmethod
     def sort_path(arr_path: list[str] | set[str], reverse: bool) -> list[str]:
+        """
+        Отсортировать пути.
+        Для создания и удаления папок необходимо соблюдать порядок путей.
+
+        @param arr_path: Список путей
+        @param reverse: Сортировать в обратном порядке
+        @return: Отсортированные пути
+        """
         # Создаем список с количеством разделителей директорий
         _res: list[tuple[int, str]] = [(len(_x.split(getOsSeparator)), _x) for _x in list(arr_path)]
         # Сортируем директории по количеству разделителей, в обратном порядке
@@ -230,7 +238,6 @@ class BaseSmartDir:
 
 
 class SmartCopy(BaseSmartDir):
-
     def execute(self) -> DiffDir:
         objDiffDir: DiffDir = self.getDiff()
         # Скопируем папки и файлы из директории А в директорию Б
@@ -240,25 +247,26 @@ class SmartCopy(BaseSmartDir):
         return objDiffDir
 
     def deleteIntruder(self, objDiffDir: DiffDir):
-
+        """
+        Удаляем файлы, которые нарушают консистентность из директории Б
+        """
         # Удаляем файлы
         for _path_file in objDiffDir.file_intruder:
             _out_path_file = objDiffDir.outfolder + _path_file
-            os.remove(_out_path_file)
-            logger.success(f"DelFile:\n{_out_path_file}")
+            remove(_out_path_file)
+            logger.warning(f"DelFile:\n{_out_path_file}")
 
         # Удаляем папки
         for _path_folder in self.sort_path(objDiffDir.folder_intruder, True):
             _out_path_folder = objDiffDir.outfolder + _path_folder
-            os.rmdir(_out_path_folder)
-            logger.success(f"DelDir:\n{_out_path_folder}")
+            rmdir(_out_path_folder)
+            logger.warning(f"DelDir:\n{_out_path_folder}")
 
     def smartCopy(self, objDiffDir: DiffDir):
         """
         Скопировать файлы и создать папки из указанных путей
         """
         # Создаем папки
-
         for _path in self.sort_path(objDiffDir.not_exist_arr_folder, False):
             _out_path = objDiffDir.outfolder + _path
             makedirs(_out_path)
@@ -273,5 +281,23 @@ class SmartCopy(BaseSmartDir):
             logger.success(f"Copy:\n{_in_path} -> {_out_path}")
 
 
+def console():
+    parser = ArgumentParser(
+        description="Умное копирование файлов"  # Название программы
+    )
+    parser.add_argument(
+        "-c",  # Первое имя аргумента
+        '--conf',  # Второе имя аргумента
+        default="./copyconf.yaml",  # Значение по умолчанию
+        type=str,  # Требуемый тип аргумента
+        # required=True,  # Установить обязательным для написания
+        help='Путь к файлу конфигурации',  # Текст подсказки
+        dest="path_conf",  # Имя аргумента
+    )
+    args = parser.parse_args()
+    SmartCopy(args.path_conf).execute()
+
+
 if __name__ == "__main__":
-    print(SmartCopy("./smart_copy/test/conf/copyconf.yaml").execute())
+    console()
+    # print(SmartCopy("./smart_copy/test/conf/copyconf.yaml").execute())
