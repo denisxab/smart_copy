@@ -2,7 +2,7 @@
 name = "smart_copy"
 version = "0.1.0"
 description = ""
-authors = ["Ваше Имя <you@example.com>"]
+authors = ["denis-kustov@rambler.ru"]
 
 [tool.poetry.dependencies]
 python = "^3.10"
