@@ -9,7 +9,7 @@ from loguru import logger
 from mg_file import YamlFile
 from pydantic.error_wrappers import ValidationError
 
-from helpful import CopyConf, sha256sum
+from helpful import CopyConf, sha256sum, getOsSeparator
 
 
 class DiffDir(NamedTuple):
@@ -150,6 +150,8 @@ class BaseSmartDir:
         Проверка не пройдена если:
         - Файла или директории не существует
         - Файл имеют разные хеш суммы
+        - Файл или папка которая находиться в исключение, но существует в Б
+
         @return: Список директорий и файлов который нужно скопировать
         """
 
@@ -215,20 +217,38 @@ class BaseSmartDir:
         _res.log()
         return _res
 
+    @staticmethod
+    def sort_path(arr_path: list[str] | set[str]) -> list[str]:
+        # Создаем список с количеством разделителей директорий
+        _res: list[tuple[int, str]] = [(len(_x.split(getOsSeparator)), _x) for _x in list(arr_path)]
+        # Сортируем директории по количеству разделителей, в обратном порядке
+        _res.sort(key=lambda k: k[0], reverse=True)
+        # Преобразуем данные
+        _res: list[str] = [_x[1] for _x in _res]
+        return _res
+
 
 class SmartCopy(BaseSmartDir):
 
     def execute(self) -> DiffDir:
         objDiffDir: DiffDir = self.getDiff()
-        # Скопируем папки и файлы из А в Б директорию
+        # Скопируем папки и файлы из директории А в директорию Б
         self.smartCopy(objDiffDir)
         # Удаляем файлы, которые нарушают консистентность из директории Б
         self.deleteIntruder(objDiffDir)
         return objDiffDir
 
-    @staticmethod
-    def deleteIntruder(objDiffDir):
-        ...
+    def deleteIntruder(self, objDiffDir: DiffDir):
+        self.sort_path(objDiffDir.folder_intruder)
+        # Удаляем файлы
+        for _path_file in objDiffDir.file_intruder:
+            _out_path_file = objDiffDir.outfolder + _path_file
+            # os.remove(_out_path_file)
+
+        # Удаляем папки
+        for _path_folder in objDiffDir.folder_intruder:
+            _out_path_folder = objDiffDir.outfolder + _path_folder
+            # os.rmdir(_out_path_folder)
 
     @staticmethod
     def smartCopy(objDiffDir: DiffDir):
@@ -251,4 +271,4 @@ class SmartCopy(BaseSmartDir):
 
 
 if __name__ == "__main__":
-    SmartCopy("./smart_copy/test/conf/copyconf.yaml").execute()
+    print(SmartCopy("./smart_copy/test/conf/copyconf.yaml").execute())

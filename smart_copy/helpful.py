@@ -1,3 +1,4 @@
+import sys
 from hashlib import sha256
 
 from pydantic import BaseModel
@@ -13,6 +14,7 @@ class CopyConf(BaseModel):
     cp: CopyConf_cp
 
 
+getOsSeparator: str = "/" if sys.platform == "linux" else "\\"
 
 
 def sha256sum(path_file):
