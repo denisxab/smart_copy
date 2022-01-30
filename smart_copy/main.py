@@ -1,3 +1,4 @@
+import os
 from collections import deque
 from os import path, listdir, makedirs
 from pprint import pformat
@@ -218,11 +219,11 @@ class BaseSmartDir:
         return _res
 
     @staticmethod
-    def sort_path(arr_path: list[str] | set[str]) -> list[str]:
+    def sort_path(arr_path: list[str] | set[str], reverse: bool) -> list[str]:
         # Создаем список с количеством разделителей директорий
         _res: list[tuple[int, str]] = [(len(_x.split(getOsSeparator)), _x) for _x in list(arr_path)]
         # Сортируем директории по количеству разделителей, в обратном порядке
-        _res.sort(key=lambda k: k[0], reverse=True)
+        _res.sort(key=lambda k: k[0], reverse=reverse)
         # Преобразуем данные
         _res: list[str] = [_x[1] for _x in _res]
         return _res
@@ -239,26 +240,28 @@ class SmartCopy(BaseSmartDir):
         return objDiffDir
 
     def deleteIntruder(self, objDiffDir: DiffDir):
-        self.sort_path(objDiffDir.folder_intruder)
+
         # Удаляем файлы
         for _path_file in objDiffDir.file_intruder:
             _out_path_file = objDiffDir.outfolder + _path_file
-            # os.remove(_out_path_file)
+            os.remove(_out_path_file)
+            logger.success(f"DelFile:\n{_out_path_file}")
 
         # Удаляем папки
-        for _path_folder in objDiffDir.folder_intruder:
+        for _path_folder in self.sort_path(objDiffDir.folder_intruder, True):
             _out_path_folder = objDiffDir.outfolder + _path_folder
-            # os.rmdir(_out_path_folder)
+            os.rmdir(_out_path_folder)
+            logger.success(f"DelDir:\n{_out_path_folder}")
 
-    @staticmethod
-    def smartCopy(objDiffDir: DiffDir):
+    def smartCopy(self, objDiffDir: DiffDir):
         """
         Скопировать файлы и создать папки из указанных путей
         """
         # Создаем папки
-        for _path in objDiffDir.not_exist_arr_folder:
+
+        for _path in self.sort_path(objDiffDir.not_exist_arr_folder, False):
             _out_path = objDiffDir.outfolder + _path
-            makedirs(_out_path, exist_ok=True)
+            makedirs(_out_path)
             logger.success(f"Mkdir:\n{_path}")
 
         # Скопировать файлы
