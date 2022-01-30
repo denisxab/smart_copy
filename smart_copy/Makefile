@@ -1,3 +1,3 @@
 # Скомпилировать проект
 compile:
-	python -m nuitka --follow-imports main.py;
+	python -m nuitka --follow-imports  sm.py;

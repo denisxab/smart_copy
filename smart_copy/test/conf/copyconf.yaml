@@ -1,16 +1,19 @@
 # Что будем делать:
 # cp - копировать
 cp:
+  # Нужно ли удалять файлы
+  delete: False
   #  Папка откуда копировать
-  infloder: "/home/denis/prog/data_test/dev/"
+  infloder: '/home/denis/prog/data_test/dev/'
   # Папка куда копировать
-  outfolder: "/home/denis/prog/data_test/main/"
+  outfolder: '/home/denis/prog/data_test/main/'
   # Файл и папки которые не копировать
   exclude:
     - pf/package.json
     - pf/__env.env
     - pf/.gitignore
     - pf/node_modules
-#    - pf/project_name
+    #    - pf/project_name
     - pyproject.toml
     - pf/debloy/log_django
+

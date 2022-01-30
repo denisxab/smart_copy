@@ -7,6 +7,33 @@
 - Копировать файлы и папки если их нет в выходной директории, или если их хеш сумма различна
 - Удалять файлы и папки в выходной директории, которые случайно там окопались
 
+# Как пользоваться
+
+Синхронизировать файлы и папки на основе конфигурации, например она расположена по пути `./copyconf.yaml`
+
+```bash
+./smart_copy/sm.bin -с ./copyconf.yaml
+```
+
+---
+
+Посмотреть доступны команды
+
+```bash
+./smart_copy/sm.bin smart_copy/sm.py --help
+```
+
+```bash
+usage: sm.py [-h] [-c PATH_CONF]
+
+Умное копирование файлов
+
+options:
+  -h, --help            show this help message and exit
+  -c PATH_CONF, --conf PATH_CONF
+                        Путь к файлу конфигурации
+```
+
 # Установка
 
 ```bash
@@ -15,33 +42,6 @@ python -m venv venv;
 . ./venv/bin/activate;
 pip install poetry;
 poetry install;
-```
-
-# Как пользоваться
-
-Синхронизировать файлы и папки на основе конфигурации, например она расположена по пути `./copyconf.yaml`
-
-```bash
-python smart_copy/main.py -с ./copyconf.yaml
-```
-
----
-
-Посмотреть доступны команды
-
-```bash
-python smart_copy/main.py --help
-```
-
-```bash
-usage: main.py [-h] [-c PATH_CONF]
-
-Умное копирование файлов
-
-options:
-  -h, --help            show this help message and exit
-  -c PATH_CONF, --conf PATH_CONF
-                        Путь к файлу конфигурации
 ```
 
 # Пример файла конфигурации

@@ -8,6 +8,7 @@ class CopyConf_cp(BaseModel):
     exclude: list[str]
     infloder: str
     outfolder: str
+    delete: bool
 
 
 class CopyConf(BaseModel):
