@@ -1,47 +1,32 @@
-from argparse import ArgumentParser
 from collections import deque
 from os import path, listdir, makedirs, rmdir, remove
 from pprint import pformat
 from re import match
 from shutil import copyfile
-from typing import NamedTuple
 
 from loguru import logger
 from mg_file import YamlFile
 from pydantic.error_wrappers import ValidationError
 
-from helpful import CopyConf, sha256sum, getOsSeparator
-
-
-class DiffDir(NamedTuple):
-    infloder: str
-    outfolder: str
-    not_exist_arr_file: set[str]
-    not_exist_arr_folder: set[str]
-    diff_data_arr_file: set[str]
-    file_intruder: set[str]
-    folder_intruder: set[str]
-
-    def log(self):
-        logger.debug(f"NotFile:\n{pformat(self.not_exist_arr_file)}")
-        logger.debug(f"NotFolder:\n{pformat(self.not_exist_arr_folder)}")
-        logger.debug(f"DiffHashFile:\n{pformat(self.diff_data_arr_file)}")
-        logger.debug(f"FileIntruder:\n{pformat(self.file_intruder)}")
-        logger.debug(f"FolderIntruder:\n{pformat(self.folder_intruder)}")
+from helpful import CopyConf, sha256sum, getOsSeparator, DiffDir
 
 
 class BaseSmartDir:
-    def __init__(self, path_conf: str):
+    def __init__(self, path_conf: str, isdelete: bool, iscopy: bool, isinfo: bool):
         """
         Валидация файла конфигураций
         """
+        self.is_info: bool = isinfo
+        self.is_copy: bool = iscopy
+        self.is_delete: bool = isdelete
+        # Работа с файлом конфигурации
         self._file = YamlFile(path_conf)
         try:
             self.conf = CopyConf.parse_obj(self._file.readFile())
             self.infloder: str = self.conf.cp.infloder
+            self.exclude_copy: set = set(self.conf.cp.exclude_copy)
             self.outfolder: str = self.conf.cp.outfolder
-            self.exclude: set = set(self.conf.cp.exclude)
-            self.delete = self.conf.cp.delete
+            self.exclude_delete: set = set(self.conf.cp.exclude_delete)
         except ValidationError as e:
             print(e.json())
 
@@ -53,9 +38,9 @@ class BaseSmartDir:
         Б - директория куда копировать данные
         """
         # Получаем пути к файлам и папкам, которые не исключены в конфигурациях
-        arr_file, arr_folder = self._excludeFolderAndFile(self.exclude,
+        arr_file, arr_folder = self._excludeFolderAndFile(self.exclude_copy,
                                                           **self._getAllFileAndFolderFromPath(self.infloder))
-        logger.trace(f"Tracking:\n{pformat({'arr_file': arr_file, 'arr_folder': arr_folder}, compact=True, width=240)}")
+        logger.debug(f"Tracking:\n{pformat({'arr_file': arr_file, 'arr_folder': arr_folder}, compact=True)}")
         # Получим разницу между А и Б директориями
         objDiffDir = self._dirDiff(
             self.outfolder,
@@ -216,7 +201,6 @@ class BaseSmartDir:
                        diff_data_arr_file,
                        file_intruder,
                        folder_intruder)
-        _res.log()
         return _res
 
     @staticmethod
@@ -241,10 +225,14 @@ class BaseSmartDir:
 class SmartCopy(BaseSmartDir):
     def execute(self) -> DiffDir:
         objDiffDir: DiffDir = self.getDiff()
+        # Показать подробный отчет
+        if self.is_info:
+            objDiffDir.log()
         # Скопируем папки и файлы из директории А в директорию Б
-        self.smartCopy(objDiffDir)
+        if self.is_copy:
+            self.smartCopy(objDiffDir)
         # Удаляем файлы, которые нарушают консистентность из директории Б
-        if self.delete:
+        if self.is_delete:
             self.deleteIntruder(objDiffDir)
         return objDiffDir
 
@@ -283,23 +271,6 @@ class SmartCopy(BaseSmartDir):
             logger.success(f"Copy:\n{_in_path} -> {_out_path}")
 
 
-def console():
-    parser = ArgumentParser(
-        description="Умное копирование файлов"  # Название программы
-    )
-    parser.add_argument(
-        "-c",  # Первое имя аргумента
-        '--conf',  # Второе имя аргумента
-        default="./copyconf.yaml",  # Значение по умолчанию
-        type=str,  # Требуемый тип аргумента
-        # required=True,  # Установить обязательным для написания
-        help='Путь к файлу конфигурации',  # Текст подсказки
-        dest="path_conf",  # Имя аргумента
-    )
-    args = parser.parse_args()
-    SmartCopy(args.path_conf).execute()
-
-
 if __name__ == "__main__":
-    console()
+    ...
     # print(SmartCopy("./smart_copy/test/conf/copyconf.yaml").execute())

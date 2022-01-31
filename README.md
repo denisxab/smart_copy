@@ -12,7 +12,7 @@
 Синхронизировать файлы и папки на основе конфигурации, например она расположена по пути `./copyconf.yaml`
 
 ```bash
-./smart_copy/sm.bin -с ./copyconf.yaml
+./sm.bin -с ./copyconf.yaml
 ```
 
 ---
@@ -20,11 +20,11 @@
 Посмотреть доступны команды
 
 ```bash
-./smart_copy/sm.bin smart_copy/sm.py --help
+./sm.bin smart_copy/smart_copy.py --help
 ```
 
 ```bash
-usage: sm.py [-h] [-c PATH_CONF]
+usage: smart_copy.py [-h] [-c PATH_CONF]
 
 Умное копирование файлов
 
