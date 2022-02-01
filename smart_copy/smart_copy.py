@@ -1,5 +1,5 @@
 from collections import deque
-from os import path, listdir, makedirs, rmdir, remove
+from os import path, listdir, rmdir, remove, makedirs
 from pprint import pformat
 from re import match
 from shutil import copyfile
@@ -8,24 +8,28 @@ from loguru import logger
 from mg_file import YamlFile
 from pydantic.error_wrappers import ValidationError
 
-from helpful import CopyConf, sha256sum, getOsSeparator, DiffDir
+from helpful import CopyConf, sha256sum, OsSeparator, DiffDir
 
 
 class BaseSmartDir:
-    def __init__(self, path_conf: str, isdelete: bool, iscopy: bool, isinfo: bool):
+    def __init__(self, path_conf: str, is_delete: bool, is_copy: bool, is_info: bool):
         """
         Валидация файла конфигураций
         """
-        self.is_info: bool = isinfo
-        self.is_copy: bool = iscopy
-        self.is_delete: bool = isdelete
+        # Флаги
+        self.is_info: bool = is_info
+        self.is_copy: bool = is_copy
+        self.is_delete: bool = is_delete
         # Работа с файлом конфигурации
         self._file = YamlFile(path_conf)
         try:
             self.conf = CopyConf.parse_obj(self._file.readFile())
             self.infloder: str = self.conf.cp.infloder
-            self.exclude_copy: set = set(self.conf.cp.exclude_copy) if self.conf.cp.exclude_copy else set()
             self.outfolder: str = self.conf.cp.outfolder
+            # Заменить имя при копировании
+            self.replace_name_dict: dict[str, str] | dict = self.conf.cp.replace_name
+            # Исключение файлов и папок
+            self.exclude_copy: set = set(self.conf.cp.exclude_copy) if self.conf.cp.exclude_copy else set()
             self.exclude_delete: set = set(self.conf.cp.exclude_delete) if self.conf.cp.exclude_delete else set()
             self.exclude: set = set(self.conf.cp.exclude) if self.conf.cp.exclude else set()
         except ValidationError as e:
@@ -62,51 +66,6 @@ class BaseSmartDir:
         return objDiffDir
 
     @staticmethod
-    def _getAllFileAndFolderFromPath(folder: str) -> dict[str, set[str] | str]:
-        """
-        Получить список всех файлов и папок по указному пути
-        @param folder: Директория из которой нужно получить файлы и папки
-        @return: Список файлов и список папок
-        """
-        # Список со всеми файлами
-        arr_file: set[str] = set()
-        # Список со всеми папками
-        arr_folder: set[str] = set()
-        ###################################
-        # Изначальный путь к папке
-        _path: str = folder
-        # Временный список с папками для перебора
-        _arr_select_folder: deque = deque([folder])
-        _Live = True
-        while _Live:
-            # Выбираем первый элемент путь из очереди
-            _path = _arr_select_folder[0]
-            # Перебираем все файлы и папки в пути
-            for x in listdir(_path):
-                # Создаем полный путь
-                file = path.join(_path, x)
-                # Если папка
-                if path.isdir(file):
-                    # Добавляем в результирующий массив
-                    arr_folder.add(file.replace(folder, ''))
-                    # Добавляем в список перебора путей
-                    _arr_select_folder.append(file)
-                # Если файл
-                else:
-                    # Добавляем в результирующий список файлов
-                    arr_file.add(file.replace(folder, ''))
-            # Удаляем путь, который перебрали
-            _arr_select_folder.popleft()
-            # Если путей нет, то прекращаем перебор
-            if len(_arr_select_folder) == 0:
-                _Live = False
-        return {
-            "split_path": folder,
-            "arr_file": arr_file,
-            "arr_folder": arr_folder,
-        }
-
-    @staticmethod
     def _excludeFolderAndFile(arr_exclude: set[str], *,
                               arr_file: set[str],
                               arr_folder: set[str], **kwargs) -> tuple[set[str], set[str]]:
@@ -116,7 +75,6 @@ class BaseSmartDir:
         @param arr_exclude: Список исключений
         @param arr_file: Список файлов
         @param arr_folder: Список папок
-        @param split_path: Путь который нужно отсекать от пути файлов и папок
         @return: Новый список файлов и папок, с исключенными путями
         """
 
@@ -124,11 +82,11 @@ class BaseSmartDir:
         if not arr_exclude:
             return arr_file, arr_folder
 
-        def isExclude(_path: str, arr_exclude: set[str]) -> bool:
+        def isExclude(_path: str) -> bool:
             # Проверяем путь на вхождение в список исключений
             for _re in arr_exclude:
                 # Проверяем начло не соответствие шаблону исключения
-                isExist = match(fr"{_re}[\W\w]*", _path)
+                isExist = match(fr"{_re}[\W\w]*", _path.__str__())
                 if isExist:
                     return True
             return False
@@ -138,7 +96,7 @@ class BaseSmartDir:
             # Перебираем пути
             for _path in _arr_path:
                 # Если путь НЕ нужно исключить, то добавляем его в правильный путь
-                if not isExclude(_path, arr_exclude):
+                if not isExclude(_path):
                     _right_path.add(_path)
             return _right_path
 
@@ -146,9 +104,10 @@ class BaseSmartDir:
 
     @classmethod
     def _dirDiff(cls,
-                 outfolder: str, infolder: str,
+                 outfolder: str, in_folder: str,
                  arr_file_in: set[str], arr_folder_in: set[str],
                  arr_file_out: set[str], arr_folder_out: set[str],
+
                  ) -> DiffDir:
         """
         Метод для получения разницы между директориями.
@@ -164,12 +123,12 @@ class BaseSmartDir:
             """
             Получить список папок которых нет в Б директории
             """
-            _res = set()
+            _res_f = set()
             for _path in arr_folder_in:
-                _out_path = outfolder + _path
+                _out_path = f"{outfolder}{_path}"
                 if not path.isdir(_out_path):
-                    _res.add(_path)
-            return _res
+                    _res_f.add(_path)
+            return _res_f
 
         def FileIfChangeDataOrNotExist() -> tuple[set[str], set[str]]:
             """
@@ -178,8 +137,8 @@ class BaseSmartDir:
             _diff_data_arr_file = set()
             _not_exist_arr_file = set()
             for _path in arr_file_in:
-                _in_path = infolder + _path
-                _out_path = outfolder + _path
+                _in_path = f"{in_folder}{_path}"
+                _out_path = f"{outfolder}{_path}"
                 # Если файла нет, то копируем его
                 if not path.isfile(_out_path):
                     _not_exist_arr_file.add(_path)
@@ -209,13 +168,61 @@ class BaseSmartDir:
         # Папки, которые существуют только в Б.
         # Это может происходить если мы добавили в исключение файл которые ранее в нем не был.
         folder_intruder: set[str] = arr_folder_out.difference(arr_folder_in)
-        _res = DiffDir(infolder, outfolder,
+        _res = DiffDir(in_folder, outfolder,
                        not_exist_arr_file,
                        not_exist_arr_folder,
                        diff_data_arr_file,
                        file_intruder,
                        folder_intruder)
         return _res
+
+    @staticmethod
+    def _getAllFileAndFolderFromPath(folder: str) -> dict[str, set[str] | str]:
+        """
+        Получить список всех файлов и папок по указному пути
+        @param folder: Директория из которой нужно получить файлы и папки
+        @return: Список файлов и список папок
+        """
+
+        # Список со всеми файлами
+        arr_file: set[str] = set()
+        # Список со всеми папками
+        arr_folder: set[str] = set()
+        ###################################
+        # Изначальный путь к папке
+        _path: str = folder
+        # Временный список с папками для перебора
+        _arr_select_folder: deque = deque([folder])
+        _Live = True
+        while _Live:
+            # Выбираем первый элемент путь из очереди
+            _path = _arr_select_folder[0]
+            # Перебираем все файлы и папки в пути
+            for x in listdir(_path):
+                # Создаем полный путь
+                file = path.join(_path, x)
+                # Если папка
+                if path.isdir(file):
+                    # Добавляем в результирующий массив
+                    # Если имя переименовали то создаем объект `TypeReplaceName
+                    arr_folder.add(file.replace(folder, ''))
+                    # Добавляем в список перебора путей
+                    _arr_select_folder.append(file)
+                # Если файл
+                else:
+                    # Добавляем в результирующий список файлов
+                    # Если имя переименовали то создаем объект `TypeReplaceName
+                    arr_file.add(file.replace(folder, ''))
+            # Удаляем путь, который перебрали
+            _arr_select_folder.popleft()
+            # Если путей нет, то прекращаем перебор
+            if len(_arr_select_folder) == 0:
+                _Live = False
+        return {
+            "split_path": folder,
+            "arr_file": arr_file,
+            "arr_folder": arr_folder,
+        }
 
     @staticmethod
     def sort_path(arr_path: list[str] | set[str], reverse: bool) -> list[str]:
@@ -228,7 +235,7 @@ class BaseSmartDir:
         @return: Отсортированные пути
         """
         # Создаем список с количеством разделителей директорий
-        _res: list[tuple[int, str]] = [(len(_x.split(getOsSeparator)), _x) for _x in list(arr_path)]
+        _res: list[tuple[int, str]] = [(len(_x.split(OsSeparator)), _x) for _x in list(arr_path)]
         # Сортируем директории по количеству разделителей, в обратном порядке
         _res.sort(key=lambda k: k[0], reverse=reverse)
         # Преобразуем данные
@@ -274,6 +281,7 @@ class SmartCopy(BaseSmartDir):
         """
         Скопировать файлы и создать папки из указанных путей
         """
+
         # Создаем папки
         _tmp = []
         for _path in self.sort_path(objDiffDir.not_exist_arr_folder, False):
@@ -289,7 +297,7 @@ class SmartCopy(BaseSmartDir):
             _in_path = objDiffDir.infloder + _path
             _out_path = objDiffDir.outfolder + _path
             copyfile(_in_path, _out_path)
-            _tmp.append((_in_path, _out_path))
+            _tmp.append(_in_path)
         logger.success("Copy:\n{0}".format(pformat(_tmp)))
 
 

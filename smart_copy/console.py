@@ -5,19 +5,19 @@ from smart_copy import SmartCopy
 
 
 @command("scc", short_help="Копирование")  # Указываем внешнее имя для команды
-@option('isdelete', "--delete", '-d', is_flag=True, default=False,
+@option('is_delete', "--delete", '-d', is_flag=True, default=False,
         help="Удалить файлы и папки нарушители")
-@option('iscopy', "--copy", '-c', is_flag=True, default=False,
+@option('is_copy', "--copy", '-c', is_flag=True, default=False,
         help="Копировать файлы и папки")
-@option('isinfo', "--info", '-i', is_flag=True, default=False,
+@option('is_info', "--info", '-i', is_flag=True, default=False,
         help="Показать подробный отчет")
 @argument('path_conf')
-def smart_copy_console(path_conf, isdelete, iscopy, isinfo):
+def smart_copy_console(path_conf, is_delete, is_copy, is_info):
     """
     Умное копирование файлов и папок
     """
-    logger.trace(f"{path_conf=},{isdelete=},{iscopy=},{isinfo=}")
-    obj: SmartCopy = SmartCopy(path_conf, isdelete, iscopy, isinfo)
+    logger.trace(f"{path_conf=},{is_delete=},{is_copy=},{is_info=}")
+    obj: SmartCopy = SmartCopy(path_conf, is_delete, is_copy, is_info)
     obj.execute()
 
     # with click.progressbar([1, 2, 3],

@@ -14,6 +14,7 @@ class CopyConfCp(BaseModel):
     exclude_copy: Optional[list[str]] = None
     exclude_delete: Optional[list[str]] = None
     exclude: Optional[list[str]] = None
+    replace_name: Optional[dict[str, str]] = dict()
     infloder: str
     outfolder: str
 
@@ -23,6 +24,41 @@ class CopyConf(BaseModel):
     Структура файла конфигурации
     """
     cp: CopyConfCp
+
+
+# class TypeReplaceName(NamedTuple):
+#     real_name: str
+#     replace_name: str | None
+#
+#     def __str__(self):
+#         return self.real_name
+#
+#     def __repr__(self):
+#         return f"{self.real_name}:{self.replace_name}"
+# class ReplaceName:
+#     # @classmethod
+#     # def checkReplaceName(cls, _path: str, replace_name_dict: dict[str, str]) -> str | TypeReplaceName:
+#     #     if cls.IsReplaceName(_path, replace_name_dict):
+#     #         return TypeReplaceName(_path, replace_name_dict[_path])
+#     #     return _path
+#     @classmethod
+#     def getSetPathIfReplaceName(cls, _arr_path: set[str], _arr_replace_name: dict[str, str]) -> set[str]:
+#         """
+#         Вернуть множество путей с замененным именем
+#
+#         @param _arr_path: Множеств путей
+#         @param _arr_replace_name: Словарь замены
+#         @return: Новое множество с учетом замены имении
+#         """
+#         return {cls.replace_name(_x, _arr_replace_name) for _x in _arr_path}
+#
+#     @classmethod
+#     def replace_name(cls, _path: str, replace_name: dict[str, str]) -> str:
+#         if _path in replace_name:
+#             res = _path.split(OsSeparator)[:-1]
+#             res.append(replace_name[_path])
+#             return f'{OsSeparator}'.join(res)
+#         return _path
 
 
 class DiffDir(NamedTuple):
@@ -45,7 +81,7 @@ class DiffDir(NamedTuple):
         logger.info(f"FolderIntruder:\n{pformat(self.folder_intruder)}")
 
 
-getOsSeparator: str = "/" if platform == "linux" else "\\"
+OsSeparator: str = "/" if platform == "linux" else "\\"
 
 
 def sha256sum(path_file):
