@@ -24,9 +24,10 @@ class BaseSmartDir:
         try:
             self.conf = CopyConf.parse_obj(self._file.readFile())
             self.infloder: str = self.conf.cp.infloder
-            self.exclude_copy: set | None = set(self.conf.cp.exclude_copy) if self.conf.cp.exclude_copy else None
+            self.exclude_copy: set = set(self.conf.cp.exclude_copy) if self.conf.cp.exclude_copy else set()
             self.outfolder: str = self.conf.cp.outfolder
-            self.exclude_delete: set | None = set(self.conf.cp.exclude_delete) if self.conf.cp.exclude_delete else None
+            self.exclude_delete: set = set(self.conf.cp.exclude_delete) if self.conf.cp.exclude_delete else set()
+            self.exclude: set = set(self.conf.cp.exclude) if self.conf.cp.exclude else set()
         except ValidationError as e:
             print(e.json())
 
@@ -38,10 +39,10 @@ class BaseSmartDir:
         Б - директория куда копировать данные
         """
         # Получаем пути к файлам и папкам из директории А, которые не исключены в конфигурациях копирования
-        arr_file_in, arr_folder_in = self._excludeFolderAndFile(self.exclude_copy,
+        arr_file_in, arr_folder_in = self._excludeFolderAndFile(self.exclude_copy.union(self.exclude),
                                                                 **self._getAllFileAndFolderFromPath(self.infloder))
         # Получаем пути к файлам и папкам из директории Б, которые не исключены в конфигурациях копирования и удаления
-        arr_file_out, arr_folder_out = self._excludeFolderAndFile(self.exclude_delete.union(self.exclude_copy),
+        arr_file_out, arr_folder_out = self._excludeFolderAndFile(self.exclude_delete.union(self.exclude),
                                                                   **self._getAllFileAndFolderFromPath(self.outfolder))
 
         logger.debug(
@@ -254,34 +255,42 @@ class SmartCopy(BaseSmartDir):
         Удаляем файлы, которые нарушают консистентность из директории Б
         """
         # Удаляем файлы
+        _tmp = []
         for _path_file in objDiffDir.file_intruder:
             _out_path_file = objDiffDir.outfolder + _path_file
             remove(_out_path_file)
-            logger.warning(f"DelFile:\n{_out_path_file}")
+            _tmp.append(_out_path_file)
+        logger.warning("DelFile:\n{0}".format(pformat(_tmp)))
 
         # Удаляем папки
+        _tmp = []
         for _path_folder in self.sort_path(objDiffDir.folder_intruder, True):
             _out_path_folder = objDiffDir.outfolder + _path_folder
             rmdir(_out_path_folder)
-            logger.warning(f"DelDir:\n{_out_path_folder}")
+            _tmp.append(_out_path_folder)
+        logger.warning("DelDir:\n{0}".format(pformat(_tmp)))
 
     def smartCopy(self, objDiffDir: DiffDir):
         """
         Скопировать файлы и создать папки из указанных путей
         """
         # Создаем папки
+        _tmp = []
         for _path in self.sort_path(objDiffDir.not_exist_arr_folder, False):
             _out_path = objDiffDir.outfolder + _path
             makedirs(_out_path)
-            logger.success(f"Mkdir:\n{_path}")
+            _tmp.append(_out_path)
+        logger.success("Mkdir:\n{0}".format(pformat(_tmp)))
 
         # Скопировать файлы
+        _tmp = []
         objDiffDir.not_exist_arr_file.update(objDiffDir.diff_data_arr_file)
         for _path in objDiffDir.not_exist_arr_file:
             _in_path = objDiffDir.infloder + _path
             _out_path = objDiffDir.outfolder + _path
             copyfile(_in_path, _out_path)
-            logger.success(f"Copy:\n{_in_path} -> {_out_path}")
+            _tmp.append((_in_path, _out_path))
+        logger.success("Copy:\n{0}".format(pformat(_tmp)))
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ class CopyConfCp(BaseModel):
     """
     exclude_copy: Optional[list[str]] = None
     exclude_delete: Optional[list[str]] = None
+    exclude: Optional[list[str]] = None
     infloder: str
     outfolder: str
 
