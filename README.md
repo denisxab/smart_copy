@@ -7,34 +7,34 @@
 - Копировать файлы и папки если их нет в выходной директории, или если их хеш сумма различна
 - Удалять файлы и папки в выходной директории, которые случайно там окопались
 
+Термины `A` `Б`:
+
+- `A` - Директория ОТКУДА копируют данные
+- `Б` - Директория КУДА копируют данные
+
 # Как пользоваться
-
-Синхронизировать файлы и папки на основе конфигурации, например она расположена по пути `./copyconf.yaml`
-
-```bash
-./sm.bin -с ./copyconf.yaml
-```
-
----
 
 Посмотреть доступны команды
 
 ```bash
-./sm.bin smart_copy/smart_copy.py --help
+./sm --help
 ```
+
+Получить информацию о двух директориях на основе конфигурации, например она расположена по пути `./copyconf.yaml`
 
 ```bash
-usage: smart_copy.py [-h] [-c PATH_CONF]
-
-Умное копирование файлов
-
-options:
-  -h, --help            show this help message and exit
-  -c PATH_CONF, --conf PATH_CONF
-                        Путь к файлу конфигурации
+./sm ./copyconf.yaml -i
 ```
 
-# Установка
+Синхронизировать файлы и папки на основе конфигурации, например она расположена по пути `./copyconf.yaml`.
+
+```bash
+./sm ./copyconf.yaml -dc
+```
+
+---
+
+# Запустить через `Python`
 
 ```bash
 git clone https://github.com/denisxab/smart_copy;
@@ -42,25 +42,29 @@ python -m venv venv;
 . ./venv/bin/activate;
 pip install poetry;
 poetry install;
+python ./smart_copy/main.py --help
 ```
 
-# Пример файла конфигурации
+# Пример файла конфигурации `copyconf.yaml`
 
 ```yaml
 # Что будем делать:
 # cp - копировать
 cp:
-  #  Папка откуда копировать
-  infloder: "/home/prog/data_test/dev/"
-  # Папка куда копировать
-  outfolder: "/home/prog/data_test/main/"
-  # Файл и папки которые не копировать
-  exclude:
-    - pf/package.json
-    - pf/__env.env
-    - pf/.gitignore
-    - pf/node_modules
-    - pf/project_name
+  # Путь к директории ОТКУДА копировать данные
+  infloder: '/home/PycharmProjects/pythonProject1/'
+  # Файл и папки которые не копировать из `А`
+  exclude_copy:
     - pyproject.toml
-    - pf/debloy/log_django
+    - poetry.lock
+    - .gitignore
+    - .git
+    - .idea
+    - venv
+  # Путь к директории КУДА копировать
+  outfolder: '/home/prog/django-start-pack_2/'
+  # Файлы и папки которые не удалять из `Б`
+  exclude_delete:
+    - .git
+    - README.md
 ```

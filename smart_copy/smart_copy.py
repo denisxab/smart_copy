@@ -24,9 +24,9 @@ class BaseSmartDir:
         try:
             self.conf = CopyConf.parse_obj(self._file.readFile())
             self.infloder: str = self.conf.cp.infloder
-            self.exclude_copy: set = set(self.conf.cp.exclude_copy)
+            self.exclude_copy: set | None = set(self.conf.cp.exclude_copy) if self.conf.cp.exclude_copy else None
             self.outfolder: str = self.conf.cp.outfolder
-            self.exclude_delete: set = set(self.conf.cp.exclude_delete)
+            self.exclude_delete: set | None = set(self.conf.cp.exclude_delete) if self.conf.cp.exclude_delete else None
         except ValidationError as e:
             print(e.json())
 
@@ -37,16 +37,27 @@ class BaseSmartDir:
         А - директория откуда брать данные
         Б - директория куда копировать данные
         """
-        # Получаем пути к файлам и папкам, которые не исключены в конфигурациях
-        arr_file, arr_folder = self._excludeFolderAndFile(self.exclude_copy,
-                                                          **self._getAllFileAndFolderFromPath(self.infloder))
-        logger.debug(f"Tracking:\n{pformat({'arr_file': arr_file, 'arr_folder': arr_folder}, compact=True)}")
+        # Получаем пути к файлам и папкам из директории А, которые не исключены в конфигурациях копирования
+        arr_file_in, arr_folder_in = self._excludeFolderAndFile(self.exclude_copy,
+                                                                **self._getAllFileAndFolderFromPath(self.infloder))
+        # Получаем пути к файлам и папкам из директории Б, которые не исключены в конфигурациях копирования и удаления
+        arr_file_out, arr_folder_out = self._excludeFolderAndFile(self.exclude_delete.union(self.exclude_copy),
+                                                                  **self._getAllFileAndFolderFromPath(self.outfolder))
+
+        logger.debug(
+            "Tracking:\n{0}".format(pformat(
+                {'arr_file_in': arr_file_in,
+                 'arr_folder_in': arr_folder_in,
+                 'arr_file_out': arr_file_out,
+                 'arr_folder_out': arr_folder_out}, compact=True)))
+
         # Получим разницу между А и Б директориями
         objDiffDir = self._dirDiff(
             self.outfolder,
             self.infloder,
-            arr_file,
-            arr_folder)
+            arr_file_in, arr_folder_in,
+            arr_file_out, arr_folder_out,
+        )
         return objDiffDir
 
     @staticmethod
@@ -108,10 +119,14 @@ class BaseSmartDir:
         @return: Новый список файлов и папок, с исключенными путями
         """
 
+        # Если нечего исключать, то возвращаем исходные данные
+        if not arr_exclude:
+            return arr_file, arr_folder
+
         def isExclude(_path: str, arr_exclude: set[str]) -> bool:
             # Проверяем путь на вхождение в список исключений
             for _re in arr_exclude:
-                # Проверяем начло на соответствие шаблону исключения
+                # Проверяем начло не соответствие шаблону исключения
                 isExist = match(fr"{_re}[\W\w]*", _path)
                 if isExist:
                     return True
@@ -131,7 +146,9 @@ class BaseSmartDir:
     @classmethod
     def _dirDiff(cls,
                  outfolder: str, infolder: str,
-                 arr_file: set[str], arr_folder: set[str]) -> DiffDir:
+                 arr_file_in: set[str], arr_folder_in: set[str],
+                 arr_file_out: set[str], arr_folder_out: set[str],
+                 ) -> DiffDir:
         """
         Метод для получения разницы между директориями.
         Проверка не пройдена если:
@@ -147,7 +164,7 @@ class BaseSmartDir:
             Получить список папок которых нет в Б директории
             """
             _res = set()
-            for _path in arr_folder:
+            for _path in arr_folder_in:
                 _out_path = outfolder + _path
                 if not path.isdir(_out_path):
                     _res.add(_path)
@@ -159,7 +176,7 @@ class BaseSmartDir:
             """
             _diff_data_arr_file = set()
             _not_exist_arr_file = set()
-            for _path in arr_file:
+            for _path in arr_file_in:
                 _in_path = infolder + _path
                 _out_path = outfolder + _path
                 # Если файла нет, то копируем его
@@ -177,8 +194,7 @@ class BaseSmartDir:
         """
         Получаем данные о директории А
         """
-        # Файлы, которые имеют разную хеш сумму
-        # Файлы которых есть в А, но нет в Б
+        # Файлы, которые имеют разную хеш сумму. Файлы которых есть в А, но нет в Б
         diff_data_arr_file, not_exist_arr_file = FileIfChangeDataOrNotExist()
         # Папки которых есть в А, но нет в Б
         not_exist_arr_folder: set[str] = FolderIfNotExist()
@@ -186,15 +202,12 @@ class BaseSmartDir:
         """
         Получаем данные о директории Б 
         """
-        # Получить список всех файлов и папок в директории Б
-        all_path_out: dict[str, set[str] | str] = cls._getAllFileAndFolderFromPath(outfolder)
         # Файлы, которые существуют только в Б.
         # Это может происходить если мы добавили в исключение файл которые ранее в нем не был.
-        file_intruder: set[str] = all_path_out['arr_file'].difference(arr_file)
+        file_intruder: set[str] = arr_file_out.difference(arr_file_in)
         # Папки, которые существуют только в Б.
         # Это может происходить если мы добавили в исключение файл которые ранее в нем не был.
-        folder_intruder: set[str] = all_path_out['arr_folder'].difference(arr_folder)
-
+        folder_intruder: set[str] = arr_folder_out.difference(arr_folder_in)
         _res = DiffDir(infolder, outfolder,
                        not_exist_arr_file,
                        not_exist_arr_folder,

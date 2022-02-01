@@ -1,7 +1,7 @@
 from hashlib import sha256
 from pprint import pformat
 from sys import platform
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from loguru import logger
 from pydantic import BaseModel
@@ -11,8 +11,8 @@ class CopyConfCp(BaseModel):
     """
     Вложенная структура файла конфигурации
     """
-    exclude_copy: list[str] = ['']
-    exclude_delete: list[str] = ['']
+    exclude_copy: Optional[list[str]] = None
+    exclude_delete: Optional[list[str]] = None
     infloder: str
     outfolder: str
 

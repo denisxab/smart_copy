@@ -1,3 +1,6 @@
 # Скомпилировать проект
 compile:
-	python -m nuitka --follow-imports sm.py && mv ./smart_copy/sm.bin ..
+	python -m nuitka --follow-imports main.py -o sm && mv sm ..
+
+debug:
+	python -m nuitka main.py --follow-imports -o sm --remove-output

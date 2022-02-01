@@ -1,6 +1,6 @@
 /.idea
 /venv
 /dist
-/smart_copy/sm.build
+/smart_copy/main.build
 /__pycache__
 /smart_copy/__pycache__

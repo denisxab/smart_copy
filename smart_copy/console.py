@@ -4,13 +4,13 @@ from loguru import logger
 from smart_copy import SmartCopy
 
 
-@command("scc", short_help="Краткое описание команды 1")  # Указываем внешнее имя для команды
+@command("scc", short_help="Копирование")  # Указываем внешнее имя для команды
 @option('isdelete', "--delete", '-d', is_flag=True, default=False,
-        help="Нужно ли удалять файлы и папки нарушители ?")
+        help="Удалить файлы и папки нарушители")
 @option('iscopy', "--copy", '-c', is_flag=True, default=False,
-        help="Нужно ли копировать файлы и папки ?")
+        help="Копировать файлы и папки")
 @option('isinfo', "--info", '-i', is_flag=True, default=False,
-        help="Нужно ли показать подробный отчет ?")
+        help="Показать подробный отчет")
 @argument('path_conf')
 def smart_copy_console(path_conf, isdelete, iscopy, isinfo):
     """
